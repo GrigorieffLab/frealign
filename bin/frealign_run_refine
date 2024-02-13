@@ -1,0 +1,299 @@
+#!/bin/csh -f
+#
+#   Control script to submit mult_refine.com
+#
+#help
+#help frealign_run_refine - perform standard refinement
+#help Usage: frealign_run_refine
+#help Control parameters must be set in local mparameters file
+#
+set working_directory	= `pwd`
+if ( ! -e mparameters ) then
+  echo ""
+  echo "ERROR: no mparameters file."
+  echo "Terminating..."
+  echo ""
+  exit
+endif
+
+set SCRATCH		= `grep scratch_dir mparameters | awk '{print $2}'`
+if ( $status || $SCRATCH == "" ) then
+  set SCRATCH		= ${working_directory}/scratch
+endif
+if ( ! -d $SCRATCH ) then
+  mkdir $SCRATCH
+endif
+
+if ( ! -d $SCRATCH ) then
+  echo "ERROR: cannot create scratch directory. Terminating..."
+  exit
+endif
+
+set cycle = ""
+if ( -e $SCRATCH/pid.log ) then
+if ( ${1} != "restart" ) then
+set pid = `grep monitor_frealign.log $SCRATCH/pid.log | awk '{print $1}'`
+set temp = `ps $pid | grep monitor_frea | grep -v grep | awk '{print $1}'`
+if ( $temp != "" ) then
+  echo ""
+  echo "Frealign search/refinement already running."
+  echo "Stop current process before starting new process."
+  echo ""
+  exit
+endif
+else
+  set cycle = ${2}
+endif
+endif
+
+set raw_images		= `grep raw_images_ref mparameters | awk '{print $2}'`
+if ( $raw_images == "" ) set raw_images = `grep raw_images mparameters | awk '{print $2}'`
+set raw_images = `echo ${raw_images:r}`
+ls $raw_images.* >& /dev/null
+if ( $status ) then
+  set raw_images = ${working_directory}/${raw_images}
+endif
+ls $raw_images.* >& /dev/null
+if ( $status ) then
+  echo ""
+  echo "ERROR: particle image stack not found."
+  echo "Terminating..."
+  echo ""
+  exit
+endif
+
+set cluster_type	= `grep cluster_type mparameters | awk '{print $2}'`
+if ( $status || $cluster_type == "" ) set cluster_type = none
+echo none > $SCRATCH/cluster_type.log
+
+if (`echo ${cluster_type} | tr '[a-z]' '[A-Z]'` == "SSH") then
+  if ( ! -e hosts ) then
+    echo ""
+    echo -n "No SSH hosts file in working directory. Submit jobs to local machine (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+    echo none > $SCRATCH/cluster_type.log
+  else
+    echo SSH > $SCRATCH/cluster_type.log
+  endif
+endif
+
+if (`echo ${cluster_type} | tr '[a-z]' '[A-Z]'` == "SGE") then
+  which qstat >& /dev/null
+  if ($status) then
+    echo ""
+    echo -n "No Sun Grid Engine available. Submit jobs to local machine (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+    echo none > $SCRATCH/cluster_type.log
+  else
+    echo SGE > $SCRATCH/cluster_type.log
+  endif
+endif
+
+if (`echo ${cluster_type} | tr '[a-z]' '[A-Z]'` == "SLURM") then
+  squeue -u $USER >& /dev/null
+  if ($status) then
+    echo ""
+    echo -n "No SLURM system available. Submit jobs to local machine (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+    echo none > $SCRATCH/cluster_type.log
+  else
+    echo SLURM > $SCRATCH/cluster_type.log
+  endif
+endif
+
+if (`echo ${cluster_type} | tr '[a-z]' '[A-Z]'` == "LSF") then
+  bjobs >& /dev/null
+  if ($status) then
+    echo ""
+    echo -n "No LSF system available. Submit jobs to local machine (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+    echo none > $SCRATCH/cluster_type.log
+  else
+    echo LSF > $SCRATCH/cluster_type.log
+  endif
+endif
+
+if (`echo ${cluster_type} | tr '[a-z]' '[A-Z]'` == "STAMPEDE") then
+  squeue -u $USER >& /dev/null
+  if ($status) then
+    echo ""
+    echo -n "No STAMPEDE system available. Submit jobs to local machine (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+    echo none > $SCRATCH/cluster_type.log
+  else
+    echo STAMPEDE > $SCRATCH/cluster_type.log
+  endif
+endif
+
+if (`echo ${cluster_type} | tr '[a-z]' '[A-Z]'` == "PBS") then
+  which qstat >& /dev/null
+  if ($status) then
+    echo ""
+    echo -n "No PBS system available. Submit jobs to local machine (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+    echo none > $SCRATCH/cluster_type.log
+  else
+    echo PBS > $SCRATCH/cluster_type.log
+  endif
+endif
+
+if (`echo ${cluster_type} | tr '[a-z]' '[A-Z]'` == "CONDOR") then
+  condor_q >& /dev/null
+  if ($status) then
+    echo ""
+    echo -n "No CONDOR system available. Submit jobs to local machine (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+    echo none > $SCRATCH/cluster_type.log
+  else
+    echo CONDOR > $SCRATCH/cluster_type.log
+  endif
+endif
+
+set nproc	= `grep nprocessor_ref mparameters | awk '{print $2}'`
+set nproc2	= `grep nprocessor_rec mparameters | awk '{print $2}'`
+if ($nproc < $nproc2) set nproc = $nproc2
+if (`head -1 $SCRATCH/cluster_type.log` == "none" && $nproc > 40) then
+  echo ""
+  echo -n "This will run more than 40 jobs on the local machine. Continue (y/N)?"
+  set answer = $<
+  echo ""
+  if ( $answer != "y" && $answer != "Y" ) exit
+endif
+
+cp mparameters $SCRATCH/mparameters_run
+
+
+set mode	= `grep MODE $SCRATCH/mparameters_run | awk '{print $2}'`
+if ( $mode < 1 ) then
+  echo "ERROR: MODE must be 1, 2, 3 or 4."
+  echo "Terminating..."
+  exit
+endif
+
+set sym		= `grep Symmetry $SCRATCH/mparameters_run | awk '{print $2}'`
+if ( $sym == "H" || $sym == "HP" ) then
+  set sum = 0
+  grep ALPHA $SCRATCH/mparameters_run >& /dev/null
+  @ sum = $sum + $status
+  grep RISE $SCRATCH/mparameters_run >& /dev/null
+  @ sum = $sum + $status
+  grep NSUBUNITS $SCRATCH/mparameters_run >& /dev/null
+  @ sum = $sum + $status
+  grep NSTARTS $SCRATCH/mparameters_run >& /dev/null
+  @ sum = $sum + $status
+  grep STIFFNESS $SCRATCH/mparameters_run >& /dev/null
+  @ sum = $sum + $status
+  if ( $sum ) then
+    echo "ERROR: not all helical parameters defined. Please"
+    echo "include the following parameters in mparameters file:"
+    echo "ALPHA, RISE, NSUBUNITS, NSTARTS, STIFFNESS"
+    echo "Terminating..."
+    exit
+  endif
+endif
+
+set bin_dir		= `grep frealign_bin_dir $SCRATCH/mparameters_run | awk '{print $2}'`
+if ( $status || $bin_dir == "" ) then
+  set bin_dir		= `which frealign_v9.exe`
+  set bin_dir		= ${bin_dir:h}
+endif
+
+set start		= `grep start_process mparameters | awk '{print $2}'`
+set data_input		= `grep data_input mparameters | awk '{print $2}'`
+ls ${data_input}_${start}_r?.* > & /dev/null
+if ( ! $status ) then
+  set restart		= `grep restart_after_crash $SCRATCH/mparameters_run | awk '{print $2}'`
+  if ( $restart != "T" ) then
+    echo ""
+    echo "Previous par file(s)/map(s) already exists."
+    echo -n "Overwrite (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+  endif
+endif
+
+@ prev = $start - 1
+set raw_images          = `grep raw_images_ref $SCRATCH/mparameters_run | awk '{print $2}'`
+if ( $raw_images == "" ) set raw_images = `grep raw_images $SCRATCH/mparameters_run | awk '{print $2}'`
+set raw_images = `echo ${raw_images:r}`
+set extension = `ls $raw_images.* | head -1`
+if ( $extension == "" ) then
+  set raw_images = ${working_directory}/${raw_images}
+  set extension = `ls $raw_images.* | head -1`
+endif
+set extension = `echo ${extension:e}`
+set nx = `${bin_dir}/fheader.exe ${raw_images}.${extension} | grep --binary-files=text NX | awk '{print $6}'`
+ls ${data_input}_${prev}_r1.par >& /dev/null
+if ( $status ) then
+  echo ""
+  echo "ERROR: particle parameter file not found."
+  echo "Terminating..."
+  echo ""
+  exit
+endif
+
+set np = `grep -v C ${data_input}_${prev}_r1.par | wc -l`
+if ( $nx != $np ) then
+  @ nx = $nx + $nx
+  if ( $nx > $np ) then
+    echo ""
+    echo "ERROR: number of particles in stack and par file differ."
+    echo "Terminating..."
+    echo ""
+    exit
+  endif
+endif
+
+set mask_file		= `grep mask_file mparameters | awk '{print $2}'`
+if ( ! $status && $mask_file != "" ) then
+
+set mask_file = `echo ${mask_file:r}`
+if ( ! -e ${mask_file}.${extension} ) then
+  set mask_file = ${working_directory}/${mask_file}
+endif
+if ( ! -e ${mask_file}.${extension} ) then
+  echo ""
+  echo "ERROR: no mask file."
+  echo "Terminating..."
+  echo ""
+  exit
+endif
+if ( -e ${data_input}_${prev}_r1.${extension} ) then
+  set nx = `${bin_dir}/fheader.exe ${data_input}_${prev}_r1.${extension} | grep --binary-files=text NX | awk '{print $4}'`
+  set np = `${bin_dir}/fheader.exe ${mask_file}.${extension} | grep --binary-files=text NX | awk '{print $4}'`
+  if ( $nx != $np ) then
+    echo ""
+    echo "ERROR: mask and map dimension differ."
+    echo "Terminating..."
+    echo ""
+    exit
+  endif
+endif
+
+endif
+
+echo "Starting refinement..." > frealign.log
+echo "Starting refinement..."
+
+echo $cycle
+${bin_dir}/mult_refine.com $cycle >& $SCRATCH/mult_refine.log &
+set pid = $!
+${bin_dir}/monitor_frealign.com $pid >& $SCRATCH/monitor_frealign.log &
+set pid = $!
+echo $pid monitor_frealign.log > $SCRATCH/pid.log
+echo ""

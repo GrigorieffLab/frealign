@@ -1,0 +1,54 @@
+# 
+# ------ MAKEFILE FILE FOR Linux FREALIGN -----------intel
+# 
+# Using: Intel compiler
+##
+# Notes:  To create executable: make -f Makefile_linux_amd64_intel_static
+#
+
+SHELL  = /bin/sh
+
+ifeq ($(MKLROOT),"")
+  FFLAGS = -w -c -O3 -fpp -assume realloc_lhs -heap-arrays -gen-interfaces
+else
+  FFLAGS = -w -c -O3 -fpp -assume realloc_lhs -heap-arrays -gen-interfaces -mkl
+endif
+
+CFLAGS = -c -w -O3 -fpp
+
+COMP   = ifort
+
+CC     = icc
+
+ifeq ($(MKLROOT),"")
+  LF     = -O3 -fpp -assume realloc_lhs -heap-arrays -gen-interfaces -static
+else
+  LF     = -O3 -fpp -assume realloc_lhs -heap-arrays -gen-interfaces -ldl -mkl -static
+endif
+
+PGM    = frealign_v9
+
+LIB    = $(PGM).a
+
+.PRECIOUS :  $(PGM) $(LIB) 
+
+include Makefile.inc
+
+ioc.o : ioc.c
+	$(CC) $(CFLAGS) -o ioc.o ioc.c
+	$(AR) r $(LIB) ioc.o
+	@\rm ioc.o
+
+$(LIB) : ioc.o $(ELEMENTS)
+	@echo all object files placed in library
+
+.f.a:
+	$(COMP) $(FFLAGS) $<
+	$(AR) r $(LIB) $*.o
+	@\rm $*.o
+
+.f90.a:
+	$(COMP) $(FFLAGS) $(%:.o=.f90)
+	$(AR) r $(LIB) $*.o
+	@\rm $*.o
+

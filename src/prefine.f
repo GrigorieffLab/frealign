@@ -1,0 +1,162 @@
+C*
+C* Copyright 2013 Howard Hughes Medical Institute.
+C* All rights reserved.
+C* Use is subject to Janelia Farm Research Campus Software Copyright 1.1
+C* license terms ( http://license.janelia.org/license/jfrc_copyright_1_1.html )
+C*
+C**************************************************************************
+      SUBROUTINE PREFINE(NSAM,IRAD,AMAG,
+     +			 MAXR1,MAXR2,PHI,THETA,PSI,DSHX,DSHY,PRESA,
+     +			 MASK,RBFACT,NPAR,
+     +			 C3DF,PBUF,SHX,SHY,
+     +                   IPAD,CS,WL,WGH1,WGH2,THETATR,CTFF,
+     +                   AMAGP,RIH,HALFW,RI2,RI3,RI4,RMAX1,RMAX2,XSTD,
+     +			 MBUF,ILST,DATC,IBUF,B3DV,DATD,
+     +			 SINCLUT,IVFLAG,OUTD,OUTC,QBUC,RBUF,FSCT,
+     +                   IEWALD,XM,YM,SX,SY,SIG2,ASYM,THETAM,STHETA,
+     +                   PSIM,SPSI,STIF,PWEIGHTS,FFTW_PLANS,SM)
+C**************************************************************************
+C  Refines up to 5 or 6 particle parameters by maximising the score 
+C  using VA04A Powell minimiser.
+C  Uses function PRES.
+C  Used in LMAIN.
+C  MW passed thru THETATR and IEWALD to CC3M for Ewald sphere corr.
+C**************************************************************************
+C
+      USE ISO_C_BINDING
+C
+      IMPLICIT NONE
+
+      INTEGER NSAM,MAXR1,MAXR2,NCYCLS,IRAD,MASK(5)
+      INTEGER JPAR,NPAR,IPAR
+      INTEGER IBUF,ILST(*),IVFLAG,IPAD,IEWALD
+      REAL PI
+      PARAMETER (NCYCLS=50)
+      PARAMETER (PI=3.1415926535897)
+      REAL XPAR(6),EPAR(6),CC3M,ESCALE,PRESA,OUTD(*)
+      REAL XPARMAP(6),EPARMAP(6),RI2,RI3,RI4,MBUF(*)
+      REAL PHI,THETA,PSI,DSHX,DSHY,AMAG,RBFACT,CC3M_C
+      REAL SHX,SHY,PBUF(*),RBUF(*),FSCT(*),SIG2
+      REAL RMAX1,RMAX2,SINCLUT(*),DUMR,XM,YM,SX,SY
+      REAL CS,WL,WGH1,WGH2,THETATR,RIH,HALFW,DATD(*)
+      REAL AMAGP,XSTD,B3DV(*),FSH,FANGLE,THETAM,STHETA
+      REAL PSIM,SPSI,STIF,PWEIGHTS(*),SM(9)
+      COMPLEX QBUC(*),DATC(*),C3DF(*),CTFF(*)
+      COMPLEX DUMC,OUTC(*)
+      CHARACTER ASYM*3
+      TYPE(C_PTR) FFTW_PLANS(*)
+      DATA EPAR/0.1,0.1,0.1,0.01,0.01,0.001/
+      DATA ESCALE/100.0/
+C**************************************************************************
+      XPAR(1)=PHI
+      XPAR(2)=THETA
+      XPAR(3)=PSI
+      XPAR(4)=DSHX
+      XPAR(5)=DSHY
+      XPAR(6)=ABS(AMAG)
+
+C  pack variables to be refined into XPARMAP using MASK
+      	IPAR=0
+      	DO 500 JPAR=1,5
+      		IF(MASK(JPAR).EQ.1) THEN
+      			IPAR=IPAR+1
+      			XPARMAP(IPAR)=XPAR(JPAR)
+      			EPARMAP(IPAR)=EPAR(JPAR)
+      		ENDIF
+500	CONTINUE
+      	NPAR=IPAR
+
+      IF (ASYM(1:1).EQ.'H') THEN
+C
+      PRESA=-CC3M_C(NSAM,IRAD,AMAG,OUTC,C3DF,
+     +	MAXR1,MAXR2,PHI,THETA,PSI,DSHX,DSHY,0,DUMC,
+     +  RBFACT,SINCLUT,IPAD,RBUF,FSCT,IEWALD,THETATR,CTFF,
+     +  RI2,RI3,RIH,HALFW,PWEIGHTS,FFTW_PLANS,SM)
+     +  -FSH(SIG2,DSHX,DSHY,XM-SHX,YM-SHY,SX,SY)
+     +  -FANGLE(SIG2,THETA,THETAM,STHETA,STIF)
+     +  -FANGLE(SIG2,PSI,PSIM,SPSI,STIF)
+C
+      ELSE
+C
+      PRESA=-CC3M(NSAM,IRAD,AMAG,OUTC,C3DF,
+     +	MAXR1,MAXR2,PHI,THETA,PSI,DSHX,DSHY,0,DUMC,
+     +  RBFACT,SINCLUT,IPAD,RBUF,FSCT,IEWALD,THETATR,CTFF,
+     +  RI2,RI3,RIH,HALFW,PWEIGHTS,FFTW_PLANS,SM)
+     +  -FSH(SIG2,DSHX,DSHY,XM-SHX,YM-SHY,SX,SY)
+C
+      ENDIF
+
+C      WRITE(*,501) PHI*180./PI,THETA*180./PI,PSI*180./PI,
+C     .		DSHX*NSAM/PI/2.0,DSHY*NSAM/PI/2.0,PRESA*180./PI,
+C     .          MAXR1,MAXR2,RBFACT,RI2,RI3,RIH,HALFW,RMAX1,RMAX2
+501   FORMAT(' on entry to  PREFINE PHI,THETA,PSI,DSHX,DSHY,PRESA=',
+     .       5F9.3,F7.2,/,2I8,7F9.3)
+
+      IF (AMAG.LT.0.0) THEN
+      	NPAR=NPAR+1
+      	XPARMAP(NPAR)=XPAR(6)
+      	EPARMAP(NPAR)=EPAR(6)
+      CALL VA04A(XPARMAP,EPARMAP,NPAR,PRESA,ESCALE,0,1,NCYCLS,XPAR,NPAR,
+     .     NSAM,MAXR1,MAXR2,MASK,
+     .     C3DF,IRAD,PBUF,SHX,SHY,IPAD,
+     .   CS,WL,WGH1,WGH2,THETATR,CTFF,AMAGP,RIH,HALFW,RI2,RI3,RI4,
+     .	 PHI,THETA,PSI,RMAX1,RMAX2,XSTD,MBUF,ILST,DATC,
+     .   IBUF,B3DV,DATD,SINCLUT,IVFLAG,RBFACT,OUTD,OUTC,QBUC,RBUF,
+     .   FSCT,DUMR,DUMR,DUMR,IEWALD,0.0,0.0,XM-SHX,YM-SHY,SX,SY,SIG2,
+     .   1.0,ASYM,THETAM,STHETA,PSIM,SPSI,STIF,PWEIGHTS,0.0,FFTW_PLANS,
+     .   SM)
+      	XPAR(6)=XPARMAP(NPAR)
+C       seldom used w. above magnification refinement on individual particles
+C      	WRITE(*,1000)XPAR(6)
+C      	WRITE(*,1000)XPARMAP(NPAR)
+1000  FORMAT(' REFINED RELATIVE MAGNIFICATION FOR THIS PARTICLE:',F12.9)
+      ELSE
+      	IF(NPAR.NE.0)
+     .CALL VA04A(XPARMAP,EPARMAP,NPAR,PRESA,ESCALE,0,1,NCYCLS,XPAR,NPAR,
+     .     NSAM,MAXR1,MAXR2,MASK,
+     .     C3DF,IRAD,PBUF,SHX,SHY,IPAD,
+     .   CS,WL,WGH1,WGH2,THETATR,CTFF,AMAGP,RIH,HALFW,RI2,RI3,RI4,
+     .	 PHI,THETA,PSI,RMAX1,RMAX2,XSTD,MBUF,ILST,DATC,
+     .   IBUF,B3DV,DATD,SINCLUT,IVFLAG,RBFACT,OUTD,OUTC,QBUC,RBUF,
+     .   FSCT,DUMR,DUMR,DUMR,IEWALD,0.0,0.0,XM-SHX,YM-SHY,SX,SY,SIG2,
+     .   1.0,ASYM,THETAM,STHETA,PSIM,SPSI,STIF,PWEIGHTS,0.0,FFTW_PLANS,
+     .   SM)
+      ENDIF
+
+C  unpack variables after refinement into XPAR using MASK
+        IPAR=0
+        DO 1500 JPAR=1,5
+                IF(MASK(JPAR).EQ.1) THEN
+                        IPAR=IPAR+1
+                        XPAR(JPAR)=XPARMAP(IPAR)
+                ENDIF
+1500    CONTINUE
+
+      PHI=XPAR(1)
+      THETA=XPAR(2)
+      PSI=XPAR(3)
+      DSHX=XPAR(4)
+      DSHY=XPAR(5)
+      AMAG=ABS(AMAG)/AMAG*XPAR(6)
+      PRESA=-PRESA
+
+C      IF (ASYM(1:1).EQ.'H') THEN
+C
+C      PRESA=-PRESA
+C     +  -FSH(SIG2,DSHX,DSHY,XM-SHX,YM-SHY,SX,SY)
+C     +  -FANGLE(SIG2,THETA,THETAM,STHETA,STIF)
+C     +  -FANGLE(SIG2,PSI,PSIM,SPSI,STIF)
+C
+C      ELSE
+C
+C      PRESA=-PRESA-FSH(SIG2,DSHX,DSHY,XM-SHX,YM-SHY,SX,SY)
+C
+C      ENDIF
+C
+C      WRITE(*,1501) PHI*180./PI,THETA*180./PI,PSI*180./PI,
+C     .		DSHX*NSAM/PI/2.0,DSHY*NSAM/PI/2.0,PRESA*180./PI
+1501  FORMAT(' on exit from PREFINE PHI,THETA,PSI,DSHX,DSHY,PRESA=',
+     .       5F9.3,F7.2)
+
+      RETURN
+      END

@@ -1,0 +1,43 @@
+# 
+# ------ MAKEFILE FILE FOR Linux FREALIGN -----------pgi
+# 
+# Using: Portland compiler
+#
+# Thanks to: Shixin Yang & Dr Edward Egelman at University of Virginia
+#    for providing this file
+#
+# Notes:  To create executable: make -f Makefile_linux_amd64_pgi
+#
+
+SHELL  = /bin/sh
+
+FFLAGS = -dusty -w -O4 -fpp -D_NAG -c
+
+CFLAGS = -w -c
+
+COMP   = nagfor
+
+CC     = gcc
+
+LF     = -Bstatic
+
+PGM    = frealign_v9
+
+LIB    = $(PGM).a
+
+.PRECIOUS :  $(PGM) $(LIB) 
+
+include Makefile.inc
+
+ioc.o : ioc.c
+	$(CC) $(CFLAGS) -o ioc.o ioc.c
+	$(AR) r $(LIB) ioc.o
+	@\rm ioc.o
+
+$(LIB) : ioc.o $(ELEMENTS)
+	@echo all object files placed in library
+
+.f.a:
+	$(COMP) $(FFLAGS) $<
+	$(AR) r $(LIB) $*.o
+	@\rm $*.o

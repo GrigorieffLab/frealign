@@ -1,0 +1,24 @@
+#!/bin/csh -f
+#
+#   Display file header
+#
+#help
+#help frealign_header - display image file header
+#help Usage: frealign_header <file name>
+#
+set working_directory	= `pwd`
+set SCRATCH		= `grep scratch_dir mparameters | awk '{print $2}'`
+if ( $status || $SCRATCH == "" ) then
+  set SCRATCH		= ${working_directory}/scratch
+endif
+if ( ! -d $SCRATCH ) then
+  mkdir $SCRATCH
+endif
+#
+set bin_dir             = `grep frealign_bin_dir $SCRATCH/mparameters_run | awk '{print $2}'`
+if ( $status || $bin_dir == "" ) then
+  set bin_dir           = `which frealign_v9.exe`
+  set bin_dir           = ${bin_dir:h}
+endif
+#
+${bin_dir}/fheader.exe ${1}

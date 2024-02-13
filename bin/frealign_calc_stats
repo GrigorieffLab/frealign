@@ -1,0 +1,43 @@
+#!/bin/csh -f
+#
+#help
+#help frealign_calc_stats - display overall occupancies and log likelihoods for all classes
+#help Usage: frealign_calc_stats <cycle>
+#help Control parameters must be set in local mparameters file
+#
+if ( ! -e mparameters ) then
+  echo
+  echo "ERROR: no mparameters file"
+  echo
+  exit
+endif
+
+if ( ${1} == "" ) then
+  echo
+  echo "ERROR: please provide cycle number"
+  echo
+  exit
+endif
+
+# set nclass	= `grep nclasses mparameters | awk '{print $2}'`
+set data_input	= `grep data_input mparameters | awk '{print $2}'`
+set nclass	= `ls ${data_input}_${1}_r*.par | wc -l`
+#
+set nc = 1
+set ao = 0
+set al = 0
+set as = 0
+while ( $nc <= $nclass )
+  set out = `grep --binary-files=text -v C ${data_input}_${1}_r${nc}.par | awk '{ s += $12 * $13; sc += $12 * $15; t += $12 } END { print '$nc' ": N =", int(t/100), " Ave. OCC =", t/NR, " Ave. LL =", s/t, " Ave. Score =", sc/t }'`
+  echo ${out}
+  set x = `echo ${out} | awk '{print $8}'`
+  set ao = `echo ${ao} ${x} | awk '{print $1 + $2}'`
+  set x = `echo ${out} | awk '{print $8 * $12}'`
+  set al = `echo ${al} ${x} | awk '{print $1 + $2}'`
+  set x = `echo ${out} | awk '{print $8 * $16}'`
+  set as = `echo ${as} ${x} | awk '{print $1 + $2}'`
+  @ nc = $nc + 1
+end
+
+set nc = `grep --binary-files=text -v C ${data_input}_${1}_r1.par | wc -l`
+echo ${nc} ${al} ${as} ${ao} | awk '{print $1,"particles, average LL =",$2/$4 ", average Score =",$3/$4}'

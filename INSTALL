@@ -1,0 +1,15 @@
+#!/bin/csh
+#
+#   Print out info to include in login scripts
+#
+set cwd = `dirname $0`
+cd $cwd
+set frealign_path = `pwd`
+#
+echo "To install Frealign, please include the following line in the shell login script:"
+echo ""
+echo "bash shell:"
+echo 'export PATH=${PATH}:'${frealign_path}'/bin'
+echo ""
+echo "csh shell:"
+echo 'setenv PATH ${PATH}:'${frealign_path}'/bin'

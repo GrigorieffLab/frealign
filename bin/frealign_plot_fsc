@@ -1,0 +1,120 @@
+#!/bin/bash
+#
+#
+# Given a (list of) frealign par file(s) at the command-line, plot FSC curve(s)
+#
+# Alexis Rohou, February 2015
+#
+#help
+#help frealign_plot_fsc - plot FSC curves
+#help Usage: frealign_plot_fsc <cycle> [<class>]
+#help Control parameters must be set in local mparameters file
+#help Requires gnuplot
+#
+shopt -s extglob
+if [ "${1}" == "" ]; then
+  echo ""
+  echo "ERROR: no cycle number given."
+  echo "Terminating..."
+  echo ""
+  exit
+fi
+
+round_number=$1
+
+working_directory=`pwd`
+
+if [ ! -e mparameters ]; then
+  echo ""
+  echo "ERROR: no mparameters file."
+  echo "Terminating..."
+  echo ""
+  exit
+fi
+
+SCRATCH=`grep scratch_dir mparameters | awk '{print $2}'`
+
+if ( $status || "$SCRATCH" == "" ); then
+  SCRATCH=${working_directory}/scratch
+fi
+
+if [ ! -d $SCRATCH ]; then
+  mkdir $SCRATCH
+fi
+#
+if [ ! -d $SCRATCH ]; then
+  echo "ERROR: cannot create scratch directory"
+  exit
+fi
+
+data_input=`grep data_input mparameters | awk '{print $2}'`
+
+if [ "${2}" == "" ]; then
+  fsc_data_fn=( ${data_input}_${1}_r+([0-9]).par )
+  plot_fn=${data_input}_$1_fsc.png
+else
+  fsc_data_fn=( ${data_input}_${1}_r${2}.par )
+  plot_fn=${data_input}_${1}_r${2}_fsc.png
+fi
+
+# plot_fn=${fsc_data_fn[${#fsc_data_fn[@]}-1]%%.???}.png
+titles=${fsc_data_fn[@]}
+
+i=0
+for title in ${titles[@]}; do
+	foo=${title%/*}
+	titles[$i]=${foo}
+	tmp_fn[$i]="$SCRATCH/tmp_fln_fsc_${i}.txt"
+	awk '/C  NO/,/C  Average/ {if (!/C  NO/&&!/C  Average/) printf "%f %f\n", 1.0/$3, $7}'  ${title} >	${tmp_fn[$i]}
+	i=$(($i+1))
+done
+echo ""
+echo Plotting FSC curves for
+echo ${titles[@]%%.dat}
+echo ""
+
+# Get the maximum resolution of refinement
+grep "C High resol. limit refinement" ${fsc_data_fn[0]} >& /dev/null
+if [ "$?" == "1" ]; then
+  maxres=$(awk '/C High resolution limit/ {print $6;exit}' ${fsc_data_fn[0]})
+else
+  maxres=$(awk '/C High resol. limit refinement/ {print $10;exit}' ${fsc_data_fn[0]})
+fi
+maxres=$( echo "1.0/$maxres" | bc -l  )
+
+gnuplot <<EOF
+set border linewidth 1.5
+set terminal png size 600,400 enhanced #font 'Arial,9'
+#set output word('${plot_fn[@]}',words('${plot_fn[@]}'))
+set output '$plot_fn'
+
+# color definitions
+set style line 1 lc rgb '#0060ad' lt 1 lw 2 pt 7 # --- blue
+set style line 2 lc rgb 'red'     lt 1 lw 2 pt 7 # --- red
+set style line 3 lc rgb 'orange'  lt 1 lw 2 pt 7 # --- orange
+set style line 4 lc rgb 'light-blue' lt 1 lw 2 pt 7 # --- light blue
+set style line 5 lc rgb 'green'   lt 1 lw 2 pt 7
+set style line 6 lc rgb 'gray'    lt 1 lw 2 pt 7
+
+#unset key
+set xlabel 'Spatial frequency (1/A)'
+set ylabel 'FSC'
+#set format y '%3.2f'
+set tics scale 0.75
+#set xrange [0.0:0.4]
+set yrange [0.0:1.0]
+set ytics 0.0,0.25,1.0
+set ytics add ("0.143" 0.143)
+set xtics 0.0,0.1,0.4
+set mxtics 2
+set key samplen 1 noenhanced
+set arrow from ${maxres},0 to ${maxres},1.0 nohead
+
+plot for [i=1:words('${tmp_fn[@]}')] word('${tmp_fn[@]}',i) using (\$1):(\$2) w lines ls i title word('${titles[@]}',i)
+
+EOF
+
+# Cleanup
+rm -f ${tmp_fn[@]}
+
+echo "Output plot figure: $plot_fn"

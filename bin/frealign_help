@@ -1,0 +1,36 @@
+#!/bin/csh -f
+#
+#   Help script
+#
+#help
+#help frealign_help - display available Frealign commands
+#help Usage: frealign_help
+#
+if ( -e mparameters ) then
+
+set bin_dir		= `grep frealign_bin_dir mparameters | awk '{print $2}'`
+if ( $status || $bin_dir == "" ) then
+  set bin_dir		= `which frealign_v9.exe`
+  set bin_dir		= ${bin_dir:h}
+endif
+
+else
+  set bin_dir		= `which frealign_v9.exe`
+  set bin_dir		= ${bin_dir:h}
+endif
+#
+grep -h "#help" ${bin_dir}/frealign_help | sed 's/#help/  /' | grep -v grep
+grep -h "#help" ${bin_dir}/frealign_template | sed 's/#help/  /' | grep -v grep
+grep -h "#help" ${bin_dir}/frealign_helical_template | sed 's/#help/  /' | grep -v grep
+grep -h "#help" ${bin_dir}/frealign_run_* | sed 's/#help/  /' | grep -v grep
+grep -h "#help" ${bin_dir}/frealign_kill | sed 's/#help/  /' | grep -v grep
+grep -h "#help" ${bin_dir}/frealign_calc_stats | sed 's/#help/  /' | grep -v grep
+grep -h "#help" ${bin_dir}/frealign_calc_reconstructions | sed 's/#help/  /' | grep -v grep
+grep -h "#help" ${bin_dir}/frealign_calc_projections | sed 's/#help/  /' | grep -v grep
+grep -h "#help" ${bin_dir}/frealign_calc_variance | sed 's/#help/  /' | grep -v grep
+grep -h "#help" ${bin_dir}/frealign_header | sed 's/#help/  /' | grep -v grep
+grep -h "#help" ${bin_dir}/frealign_plot_fsc | sed 's/#help/  /' | grep -v grep
+grep -h "#help" ${bin_dir}/frealign_angular_plot | sed 's/#help/  /' | grep -v grep
+grep -h "#help" ${bin_dir}/frealign_angular_plot2 | sed 's/#help/  /' | grep -v grep
+# grep -h "#help" ${bin_dir}/*.com | sed 's/#help/  /' | grep -v grep
+echo " "

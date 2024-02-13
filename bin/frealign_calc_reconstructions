@@ -1,0 +1,231 @@
+#!/bin/csh -f
+#
+#   Display file header
+#
+#help
+#help frealign_calc_reconstructions - calculate 3D reconstructions
+#help Usage: frealign_calc_reconstructions <cycle> [<first particle> <last particle>]
+#help Control parameters must be set in local mparameters file
+#
+set working_directory	= `pwd`
+
+if ( ! -e mparameters ) then
+  echo ""
+  echo "ERROR: no mparameters file."
+  echo "Terminating..."
+  echo ""
+  exit
+endif
+
+set SCRATCH		= `grep scratch_dir mparameters | awk '{print $2}'`
+if ( $status || $SCRATCH == "" ) then
+  set SCRATCH		= ${working_directory}/scratch
+endif
+if ( ! -d $SCRATCH ) then
+  mkdir $SCRATCH
+endif
+#
+if ( ! -d $SCRATCH ) then
+  echo "ERROR: cannot create scratch directory"
+  exit
+endif
+
+set raw_images		= `grep raw_images_rec mparameters | awk '{print $2}'`
+if ( $raw_images == "" ) set raw_images = `grep raw_images mparameters | awk '{print $2}'`
+set raw_images = `echo ${raw_images:r}`
+ls $raw_images.* >& /dev/null
+if ( $status ) then
+  set raw_images = ${working_directory}/${raw_images}
+endif
+ls $raw_images.* >& /dev/null
+if ( $status ) then
+  echo ""
+  echo "ERROR: particle image stack not found."
+  echo "Terminating..."
+  echo ""
+  exit
+endif
+
+if ( ${1} == "" ) then
+  echo ""
+  echo "ERROR: cycle number missing"
+  echo "Terminating..."
+  echo ""
+  exit
+endif
+
+set cluster_type	= `grep cluster_type mparameters | awk '{print $2}'`
+if ( $status || $cluster_type == "" ) set cluster_type = none
+echo none > $SCRATCH/cluster_type.log
+
+if (`echo ${cluster_type} | tr '[a-z]' '[A-Z]'` == "SSH") then
+  if ( ! -e hosts ) then
+    echo ""
+    echo -n "No SSH hosts file in working directory. Submit jobs to local machine (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+    echo none > $SCRATCH/cluster_type.log
+  else
+    echo SSH > $SCRATCH/cluster_type.log
+  endif
+endif
+
+if (`echo ${cluster_type} | tr '[a-z]' '[A-Z]'` == "SGE") then
+  which qstat >& /dev/null
+  if ($status) then
+    echo ""
+    echo -n "No Sun Grid Engine available. Submit jobs to local machine (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+    echo none > $SCRATCH/cluster_type.log
+  else
+    echo SGE > $SCRATCH/cluster_type.log
+  endif
+endif
+
+if (`echo ${cluster_type} | tr '[a-z]' '[A-Z]'` == "SLURM") then
+  squeue -u $USER >& /dev/null
+  if ($status) then
+    echo ""
+    echo -n "No SLURM system available. Submit jobs to local machine (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+    echo none > $SCRATCH/cluster_type.log
+  else
+    echo SLURM > $SCRATCH/cluster_type.log
+  endif
+endif
+
+if (`echo ${cluster_type} | tr '[a-z]' '[A-Z]'` == "LSF") then
+  bjobs >& /dev/null
+  if ($status) then
+    echo ""
+    echo -n "No LSF system available. Submit jobs to local machine (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+    echo none > $SCRATCH/cluster_type.log
+  else
+    echo LSF > $SCRATCH/cluster_type.log
+  endif
+endif
+
+if (`echo ${cluster_type} | tr '[a-z]' '[A-Z]'` == "STAMPEDE") then
+  squeue -u $USER >& /dev/null
+  if ($status) then
+    echo ""
+    echo -n "No STAMPEDE system available. Submit jobs to local machine (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+    echo none > $SCRATCH/cluster_type.log
+  else
+    echo STAMPEDE > $SCRATCH/cluster_type.log
+  endif
+endif
+
+if (`echo ${cluster_type} | tr '[a-z]' '[A-Z]'` == "PBS") then
+  which qstat >& /dev/null
+  if ($status) then
+    echo ""
+    echo -n "No PBS system available. Submit jobs to local machine (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+    echo none > $SCRATCH/cluster_type.log
+  else
+    echo PBS > $SCRATCH/cluster_type.log
+  endif
+endif   
+
+if (`echo ${cluster_type} | tr '[a-z]' '[A-Z]'` == "CONDOR") then
+  condor_q >& /dev/null
+  if ($status) then
+    echo ""
+    echo -n "No CONDOR system available. Submit jobs to local machine (y/N)?"
+    set answer = $<
+    echo ""
+    if ( $answer != "y" && $answer != "Y" ) exit
+    echo none > $SCRATCH/cluster_type.log
+  else
+    echo CONDOR > $SCRATCH/cluster_type.log
+  endif
+endif
+
+set nproc	= `grep nprocessor_rec mparameters | awk '{print $2}'`
+if (`head -1 $SCRATCH/cluster_type.log` == "none" && $nproc > 40) then
+  echo ""
+  echo -n "This will run more than 40 jobs on the local machine. Continue (y/N)?"
+  set answer = $<
+  echo ""
+  if ( $answer != "y" && $answer != "Y" ) exit
+endif
+
+cp mparameters $SCRATCH/mparameters_run
+
+set bin_dir             = `grep frealign_bin_dir $SCRATCH/mparameters_run | awk '{print $2}'`
+if ( $status || $bin_dir == "" ) then
+  set bin_dir           = `which frealign_v9.exe`
+  set bin_dir           = ${bin_dir:h}
+endif
+#
+set extension		= `ls $raw_images.* | head -1`
+if ( $extension == "" ) then
+  set raw_images = ${working_directory}/${raw_images}
+  set extension		= `ls $raw_images.* | head -1`
+endif
+set extension		= `echo ${extension:e}`
+set nx = `${bin_dir}/fheader.exe ${raw_images}.${extension} | grep --binary-files=text NX | awk '{print $6}'`
+if ( ${2} == "" || ${3} == "" ) then
+  set first = 1
+  set last = $nx
+else
+  set first = ${2}
+  set last = ${3}
+endif
+
+set data_input          = `grep data_input mparameters | awk '{print $2}'`
+ls ${data_input}_${1}_r?.${extension} > & /dev/null
+if ( ! $status ) then
+  echo ""
+  echo "Previous map(s) already exists."
+  echo -n "Overwrite (y/N)? "
+  set answer = $<
+  echo ""
+  if ( $answer != "y" && $answer != "Y" ) exit
+endif
+
+ls ${data_input}_${1}_r1.par >& /dev/null
+if ( $status ) then
+  echo ""
+  echo "ERROR: particle parameter file not found."
+  echo "Terminating..."
+  echo ""
+  exit
+endif
+
+set np = `grep -v C ${data_input}_${1}_r1.par | wc -l`
+if ( $nx != $np ) then
+  @ nx = $nx + $nx
+  if ( $nx > $np ) then
+    echo ""
+    echo "ERROR: number of particles in stack and par file differ."
+    echo "Terminating..."
+    echo ""
+    exit
+  endif
+endif
+
+echo "Starting reconstruction..." > frealign.log
+echo "Starting reconstruction..."
+
+echo "monitor reconstruct" > $SCRATCH/pid.log
+${bin_dir}/mult_reconstruct.com ${first} ${last} ${1} >& $SCRATCH/mult_reconstruct.log &
+set pid = $!
+${bin_dir}/monitor_frealign.com $pid >& $SCRATCH/monitor_frealign.log &
+set pid = $!
+echo $pid monitor_frealign.log >> $SCRATCH/pid.log
+echo ""

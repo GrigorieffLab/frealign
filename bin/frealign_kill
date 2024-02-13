@@ -1,0 +1,53 @@
+#!/bin/csh -f
+#
+#   Control script to kill Frealign jobs
+#
+#help
+#help frealign_kill - abort frealign search/refinement
+#help Usage: frealign_kill
+#help Must be issued in working directory.
+#
+
+set working_directory	= `pwd`
+
+if ( ! -e mparameters ) then
+  echo ""
+  echo "ERROR: no mparameters file"
+  echo ""
+  exit
+endif
+
+grep scratch_dir mparameters | awk '{print $2}' >& /dev/null
+if ( ! $status ) then
+  set SCRATCH		= `grep scratch_dir mparameters | awk '{print $2}'`
+  if ( $SCRATCH == "" ) then
+    set SCRATCH		= ${working_directory}/scratch
+  endif
+endif
+
+if ( ! -e $SCRATCH/pid.log ) then
+  echo ""
+  echo "No Frealign search/refinement job running."
+  echo "Nothing to kill."
+  echo ""
+  exit
+endif
+
+set OLD = `stat -c %Z $SCRATCH/monitor_frealign.log`
+set NOW = `date +%s`
+set diff = `expr $NOW - $OLD`
+if ( $diff > 10 ) then
+  echo ""
+  echo "No Frealign search/refinement job running."
+  echo "Nothing to kill."
+  echo ""
+  exit
+endif
+
+echo ""
+echo "Sending termination signal..." >> frealign.log
+echo "Sending termination signal..."
+echo ""
+echo "monitor kill" >> $SCRATCH/pid.log
+echo "monitor kill" >> $SCRATCH/pid_temp.log
+

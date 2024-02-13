@@ -1,0 +1,75 @@
+#!/bin/csh -f
+#
+# Plot Euler angle distributions described by Frealign par file
+#
+# Alexis Rohou, September 2015
+#
+#help
+#help frealign_angular_plot2 - generate 2D plot for THETA and PHI
+#help Usage: frealign_angular_plot2 <cycle> [<minimum OCC> <minimum SCORE> <class>]
+#help Control parameters must be set in local mparameters file
+#help Requires python matplotlib
+#
+set working_directory	= `pwd`
+
+if ( ! -e mparameters ) then
+  echo
+  echo "ERROR: no mparameters file."
+  echo "Terminating..."
+  echo
+endif
+
+set SCRATCH		= `grep scratch_dir mparameters | awk '{print $2}'`
+if ( $status || $SCRATCH == "" ) then
+  set SCRATCH		= ${working_directory}/scratch
+endif
+if ( ! -d $SCRATCH ) then
+  mkdir $SCRATCH
+endif
+
+set bin_dir		= `grep frealign_bin_dir mparameters | awk '{print $2}'`
+if ( $status || $bin_dir == "" ) then
+  set bin_dir		= `which frealign_v9.exe`
+  set bin_dir		= ${bin_dir:h}
+endif
+#
+
+set data_input		= `grep data_input mparameters | awk '{print $2}'`
+set output_fig_fn = ${data_input}_${1}_angular_plot.pdf
+
+set occ_threshold   = 80.0
+set score_threshold = 0.0
+set class           = 0
+set output_fig_fn   = ${data_input}_${1}_angular_plot.pdf
+if ( ${2} != "" ) then
+  set occ_threshold   = ${2}
+endif
+if ( ${3} != "" ) then
+  set score_threshold = ${3}
+endif
+echo -n "Plotting angular distribution for cycle ${1}. Occupancy threshold: ${occ_threshold}. Score threshold: ${score_threshold}."
+if ( ${4} != "" ) then
+  set class           = ${4}
+  set output_fig_fn   = ${data_input}_${1}_r${class}_angular_plot.pdf
+  echo "Class ${class}"
+else
+  echo " "
+endif
+
+
+\rm $SCRATCH/tmp_all.txt >& /dev/null
+
+if ( ${class} == 0 ) then
+  set nclass		= `ls ${data_input}_${1}_r*.par | wc -l`
+  set nc = 1
+  while ( $nc <= $nclass )
+    grep -v C ${data_input}_${1}_r${nc}.par | awk '{if ($12 > '$occ_threshold' && $15 > '$score_threshold') {print $3" "$4}}' >> $SCRATCH/tmp_all.txt
+    @ nc = $nc + 1
+  end
+else
+  grep -v C ${data_input}_${1}_r${class}.par | awk '{if ($12 > '$occ_threshold' && $15 > '$score_threshold') {print $3" "$4}}' >> $SCRATCH/tmp_all.txt
+endif
+
+${bin_dir}/2d_histogram_03.py $SCRATCH/tmp_all.txt $output_fig_fn
+
+echo "Output figure: $output_fig_fn"

@@ -1,0 +1,46 @@
+# 
+# ------ MAKEFILE FILE FOR Linux FREALIGN -----------F77
+# 
+# Using: gnu compiler
+#
+# Thanks to: Ralf Schmidt of Image Science Software GmbH
+#    for providing this file
+#
+# Notes:  To create executable: make -f Makefile_OSX_gfortran
+#
+
+SHELL  = /bin/sh
+
+FFLAGS = -c -O3 -fno-second-underscore -cpp -w -static
+
+CFLAGS = -c -O3 -DPROTOTYPE -cpp -w -static
+
+COMP   = gfortran
+
+CC     = gcc
+
+LF     = -static-libgcc -static-libgfortran -lgfortran -lgcc \
+         -lSystem -nodefaultlibs -Wl,-no_compact_unwind \
+         -mmacosx-version-min=10.7 \
+         /usr/local/gfortran/lib/libquadmath.a
+
+PGM    = frealign_v9
+
+LIB    = $(PGM).a
+
+.PRECIOUS :  $(PGM) $(LIB) 
+
+include Makefile.inc
+
+ioc.o : ioc.c
+	$(CC) $(CFLAGS) -o ioc.o ioc.c
+	$(AR) rc $(LIB) ioc.o
+	@\rm ioc.o
+
+$(LIB) : ioc.o $(ELEMENTS)
+	@echo all object files placed in library
+
+.f.a:
+	$(COMP) $(FFLAGS) $<
+	$(AR) r $(LIB) $*.o
+	@\rm $*.o

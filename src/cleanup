@@ -1,0 +1,8 @@
+#!/bin/csh -f
+#
+\rm *.mod >& /dev/null
+\rm *__genmod.f90 >& /dev/null
+\rm *.o >& /dev/null
+\rm frealign_v*.a >& /dev/null
+\rm frealign_v*_mp.a >& /dev/null
+

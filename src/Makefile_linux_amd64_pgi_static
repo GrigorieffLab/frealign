@@ -1,0 +1,47 @@
+# 
+# ------ MAKEFILE FILE FOR Linux FREALIGN -----------pgi
+# 
+# Using: Portland compiler
+#
+# Thanks to: Shixin Yang & Dr Edward Egelman at University of Virginia
+#    for providing this file
+#
+# Notes:  To create executable: make -f Makefile_linux_amd64_pgi
+#
+
+SHELL  = /bin/sh
+
+FFLAGS = -tp=amd64 -O3 -mcmodel=medium -Mpreprocess -c
+
+CFLAGS = -tp=amd64 -O3 -mcmodel=medium -Mpreprocess -c
+
+COMP   = pgf90
+
+CC     = pgcc
+
+ifeq ($(MKLROOT),"")
+  LF   = -Bstatic_pgi -mcmodel=medium -nomp
+else
+  LF   = -Bstatic_pgi -mcmodel=medium -nomp -ldl -Wl,--start-group $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_sequential.a -Wl,--end-group
+endif
+
+PGM    = frealign_v9
+
+LIB    = $(PGM).a
+
+.PRECIOUS :  $(PGM) $(LIB) 
+
+include Makefile.inc
+
+ioc.o : ioc.c
+	$(CC) $(CFLAGS) -o ioc.o ioc.c
+	$(AR) r $(LIB) ioc.o
+	@\rm ioc.o
+
+$(LIB) : ioc.o $(ELEMENTS)
+	@echo all object files placed in library
+
+.f.a:
+	$(COMP) $(FFLAGS) $<
+	$(AR) r $(LIB) $*.o
+	@\rm $*.o

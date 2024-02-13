@@ -1,0 +1,24 @@
+#!/bin/csh -f
+#
+#   Script to copy Frealign mparameters template file to current directory
+#
+#help
+#help frealign_helical_template - copy template mparameters file to current directory
+#help Usage: frealign_helical_template
+#help Must be issued in working directory.
+#
+
+if ( -e mparameters ) then
+  echo
+  echo "mparameters file already exists."
+  echo -n "Overwrite (y/N)? "
+  set answer = $<
+  echo
+  if ( $answer != "y" && $answer != "Y" ) exit
+endif
+
+set bin_dir           = `which frealign_v9.exe`
+set bin_dir           = ${bin_dir:h}
+
+cp ${bin_dir}/mparameters_helical mparameters
+echo "Template file copied."

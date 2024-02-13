@@ -26,7 +26,7 @@ CC     = gcc
 ifeq ($(MKLROOT),"")
   LF   = -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 else
-  LF   = -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -ldl -Wl,--start-group $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_sequential.a -Wl,--end-group
+  LF   = -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -ldl -Wl,--start-group $(MKLROOT)/libmkl_intel_lp64.a $(MKLROOT)/libmkl_core.a $(MKLROOT)/libmkl_sequential.a -ldl -lpthread -Wl,--end-group
 endif
 
 PGM    = frealign_v9

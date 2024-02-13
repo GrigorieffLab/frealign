@@ -148,10 +148,16 @@ ifeq ($(LIB),$(PGM)_mp.a)
 $(PGM) : $(PGM).o $(LIB) resample_mp merge_3d_mp
 	$(COMP) $(PGM).o $(LIB) $(FFTLIB) $(LF) $(OSX) -o ../bin/$(PGM)_mp.exe
 	@\rm $(PGM).o
+	@\rm $(PGM).a
+	@\rm fftw3.3.o
+	@\rm fftw33.mod
 else
 $(PGM) : $(PGM).o $(LIB) resample fheader merge_classes select_classes merge_3d calc_occ calc_occ_helical set_polarity rsample bootvar bfactor apply_mask
 	$(COMP) $(PGM).o $(LIB) $(FFTLIB) $(LF) $(OSX) -o ../bin/$(PGM).exe
 	@\rm $(PGM).o
+	@\rm $(PGM).a
+	@\rm fftw3.3.o
+	@\rm fftw33.mod
 endif
 
 ifeq ($(COMP),ifort)
@@ -222,6 +228,7 @@ $(PGM).o  : $(PGM).f
 	$(COMP) $(FFLAGS) fftw3.3.f90
 	$(COMP) $(FFLAGS) -o $(PGM).o  $(PGM).f
 	$(AR) r $(LIB) fftw3.3.o
+	
 
 fheader.o  : fheader.f
 	$(COMP) $(FFLAGS) -o fheader.o  fheader.f

@@ -1,3 +1,10 @@
+New features in v9.12
+
+- Refinement and reconstruction accept par files that 
+  contain subsets of the particles in the stack file.
+  This may break workflows that combine multiple par
+  files.
+
 New features in v9.11
 
 - Asymmetric reconstructions (enable by using lowercase

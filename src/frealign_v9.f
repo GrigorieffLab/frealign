@@ -104,7 +104,7 @@ C  FFTW_PLANS(9),FFTW_PLANS(10) = NSAM4 x NSAM4         transforms, fwd,bwd (SUB
       	DATA  FALL/.TRUE./
       	DATA  FHIST/.FALSE./
       	DATA  ASYMTEST/' CDTOI0123456789'/
-      	DATA  VX/'9.11 - 25.02.16'/
+      	DATA  VX/'9.12 - 19.07.24'/
 C       15 chars 'X.XX - XX.XX.XX' <--<--<--<--<--<--<--<--
 C------------------------------------------------------------------------------
         IMP=0

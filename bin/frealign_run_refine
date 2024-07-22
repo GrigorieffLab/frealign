@@ -252,10 +252,10 @@ if ( $nx != $np ) then
   @ nx = $nx + $nx
   if ( $nx > $np ) then
     echo ""
-    echo "ERROR: number of particles in stack and par file differ."
-    echo "Terminating..."
-    echo ""
-    exit
+    echo "WARNING: number of particles in stack and par file differ."
+  #  echo "Terminating..."
+  #  echo ""
+  #  exit
   endif
 endif
 

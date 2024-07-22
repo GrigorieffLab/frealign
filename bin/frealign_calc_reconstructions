@@ -179,15 +179,18 @@ if ( $extension == "" ) then
 endif
 set extension		= `echo ${extension:e}`
 set nx = `${bin_dir}/fheader.exe ${raw_images}.${extension} | grep --binary-files=text NX | awk '{print $6}'`
+set data_input          = `grep data_input mparameters | awk '{print $2}'`
+set np = `grep -v C ${data_input}_${1}_r1.par | wc -l`
+#echo "Number of particles in par file: $np"
 if ( ${2} == "" || ${3} == "" ) then
   set first = 1
-  set last = $nx
+  set last = $np
 else
   set first = ${2}
   set last = ${3}
 endif
 
-set data_input          = `grep data_input mparameters | awk '{print $2}'`
+
 ls ${data_input}_${1}_r?.${extension} > & /dev/null
 if ( ! $status ) then
   echo ""
@@ -212,10 +215,10 @@ if ( $nx != $np ) then
   @ nx = $nx + $nx
   if ( $nx > $np ) then
     echo ""
-    echo "ERROR: number of particles in stack and par file differ."
-    echo "Terminating..."
+    echo "Warning: number of particles in stack and par file differ."
+    #echo "Terminating..."
     echo ""
-    exit
+    #exit
   endif
 endif
 

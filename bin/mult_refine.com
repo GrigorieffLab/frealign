@@ -73,7 +73,9 @@ endif
 
 if ( $first == "" || $last == "" ) then
   set first = 1
-  set last = `${bin_dir}/fheader.exe ${raw_images}.${extension} | grep --binary-files=text NX | awk '{print $6}'`
+  @ prev = $start - 1
+  set last = `grep -v C ${data_input}_${prev}_r1.par | wc -l`
+#  set last = `${bin_dir}/fheader.exe ${raw_images}.${extension} | grep --binary-files=text NX | awk '{print $6}'`
 endif
 
 sleep 2

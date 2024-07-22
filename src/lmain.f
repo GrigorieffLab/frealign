@@ -291,9 +291,11 @@ C
                 IF (PRESA(IFIRSTF+J-1).LE.-1.0) GOTO 840
                 IBUF=IBUF+1
                 ILST(IBUF)=IFIRSTF+J-1
-                IP=NSAM*(ABS(ILIST(IFIRSTF+J-1))-IFIRSTS)
+C                IP=NSAM*(ABS(ILIST(IFIRSTF+J-1))-IFIRSTS)
+                IP=NSAM*(ABS(ILIST(IFIRSTF+J-1))-1)
                 DO 20 I=1,NSAM
                   ID=1+(NSAM+2)*(I-1)+NSAM*(NSAM+2)*(IBUF-1)
+C                  WRITE(*,*)' IREAD1 IP = ',IP
                   CALL IREAD(INPROJ,PBUF(ID),I+IP)
 20              CONTINUE
                 PMIN=1.0E30
@@ -417,9 +419,11 @@ C          IF (((.NOT.FDEF).OR.CI).AND.(.NOT.FMAG)) THEN
 C then need to read in particle images because they were not
 C already read in for defocus or magnification refinement
               IF (ISM.EQ.1) THEN
-                IP=NSAM*(ABS(ILIST(K))-IFIRSTS)
+C                IP=NSAM*(ABS(ILIST(K))-IFIRSTS)
+                IP=NSAM*(ABS(ILIST(K))-1)
                 DO 19 I=1,NSAM
                    ID=1+(NSAM+2)*(I-1)
+C                   WRITE(*,*)' IREAD2 IP = ',IP
                    CALL IREAD(INPROJ,DATA(ID),I+IP)
 19              CONTINUE
                 PMIN=1.0E30
